@@ -1,0 +1,28 @@
+# HELP smb_client_bytes_read_per_sec SMB Client bytes_read_per_sec for share
+# TYPE smb_client_bytes_read_per_sec gauge
+smb_client_bytes_read_per_sec{share="\\\\server\\share1"} 1234.56 1704067200
+smb_client_bytes_read_per_sec{share="\\\\server\\share2"} 5678.90 1704067200
+
+# HELP smb_client_bytes_written_per_sec SMB Client bytes_written_per_sec for share
+# TYPE smb_client_bytes_written_per_sec gauge
+smb_client_bytes_written_per_sec{share="\\\\server\\share1"} 987.65 1704067200
+smb_client_bytes_written_per_sec{share="\\\\server\\share2"} 4321.09 1704067200
+
+# HELP smb_client_read_requests_per_sec SMB Client read_requests_per_sec for share
+# TYPE smb_client_read_requests_per_sec gauge
+smb_client_read_requests_per_sec{share="\\\\server\\share1"} 10.5 1704067200
+smb_client_read_requests_per_sec{share="\\\\server\\share2"} 25.3 1704067200
+
+# HELP smb_client_write_requests_per_sec SMB Client write_requests_per_sec for share
+# TYPE smb_client_write_requests_per_sec gauge
+smb_client_write_requests_per_sec{share="\\\\server\\share1"} 5.2 1704067200
+smb_client_write_requests_per_sec{share="\\\\server\\share2"} 12.7 1704067200
+
+# HELP smb_client_bytes_read_per_sec_total Total bytes read per second
+# TYPE smb_client_bytes_read_per_sec_total gauge
+smb_client_bytes_read_per_sec_total 6913.46 1704067200
+
+# HELP smb_client_bytes_written_per_sec_total Total bytes written per second
+# TYPE smb_client_bytes_written_per_sec_total gauge
+smb_client_bytes_written_per_sec_total 5308.74 1704067200
+
