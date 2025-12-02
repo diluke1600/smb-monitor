@@ -1,0 +1,24 @@
+﻿# HELP smb_client_read_bytes_per_sec SMB Client read_bytes_per_sec for share
+# TYPE smb_client_read_bytes_per_sec gauge
+smb_client_read_bytes_per_sec{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_write_bytes_per_sec SMB Client write_bytes_per_sec for share
+# TYPE smb_client_write_bytes_per_sec gauge
+smb_client_write_bytes_per_sec{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_read_requests_per_sec SMB Client read_requests_per_sec for share
+# TYPE smb_client_read_requests_per_sec gauge
+smb_client_read_requests_per_sec{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_write_requests_per_sec SMB Client write_requests_per_sec for share
+# TYPE smb_client_write_requests_per_sec gauge
+smb_client_write_requests_per_sec{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_current_data_queue_length SMB Client current_data_queue_length for share
+# TYPE smb_client_current_data_queue_length gauge
+smb_client_current_data_queue_length{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_data_bytes_per_sec SMB Client data_bytes_per_sec for share
+# TYPE smb_client_data_bytes_per_sec gauge
+smb_client_data_bytes_per_sec{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_data_requests_per_sec SMB Client data_requests_per_sec for share
+# TYPE smb_client_data_requests_per_sec gauge
+smb_client_data_requests_per_sec{share="\192.168.31.87\f"} 0 1764660160
+# HELP smb_client_credit_stalls_per_sec SMB Client credit_stalls_per_sec for share
+# TYPE smb_client_credit_stalls_per_sec gauge
+smb_client_credit_stalls_per_sec{share="\192.168.31.87\f"} 0 1764660160

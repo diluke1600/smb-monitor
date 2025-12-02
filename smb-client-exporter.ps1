@@ -1,24 +1,24 @@
 # SMB Client Performance Counters to Prometheus Textfile Exporter
-# 将 SMB Client 性能计数器转换为 Prometheus textfile 格式
+# Converts SMB Client performance counters into Prometheus textfile format
 
 param(
-    [string]$OutputPath = "C:\prometheus\textfile\smb_client.prom",
+    [string]$OutputPath = "C:\Program Files\windows_exporter\textfile_inputs\smb_client.prom",
     [int]$IntervalSeconds = 60
 )
 
-# 确保输出目录存在
+# Ensure the output directory exists
 $outputDir = Split-Path -Path $OutputPath -Parent
 if (-not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 }
 
-# 临时文件路径（原子写入）
+# Temporary file path for atomic writes
 $tempFile = "$OutputPath.tmp"
 
-# 获取当前时间戳（Unix 时间戳，秒）
+# Current Unix timestamp (seconds)
 $timestamp = [int64](([datetime]::UtcNow)-(get-date "1/1/1970")).TotalSeconds
 
-# Prometheus metrics 格式函数
+# Helper to build Prometheus metrics
 function Write-PrometheusMetric {
     param(
         [string]$Name,
@@ -39,7 +39,7 @@ function Write-PrometheusMetric {
     
     $output = ""
     
-    # 处理 NaN 和 Infinity 值
+    # Guard against NaN and Infinity
     if ([double]::IsNaN($Value) -or [double]::IsInfinity($Value)) {
         $Value = 0
     }
@@ -53,25 +53,25 @@ function Write-PrometheusMetric {
     return $output
 }
 
-# 收集 SMB Client 性能计数器
+# Collect SMB client counters
 function Get-SMBClientCounters {
     $metrics = @()
     $script:helpTypesPrinted = @{}
     
     try {
-        # SMB Client Shares 计数器类别
+        # SMB Client Shares counter category
         $smbClientCategory = "SMB Client Shares"
         
-        # 获取所有 SMB Client Shares 实例
+        # Discover counter instances
         $counterSet = Get-Counter -ListSet $smbClientCategory -ErrorAction SilentlyContinue
         if (-not $counterSet) {
-            Write-Warning "无法访问 SMB Client Shares 性能计数器类别"
+            Write-Warning "Unable to access SMB Client Shares counter category"
             return $metrics
         }
         
         $instances = @()
         foreach ($path in $counterSet.PathsWithInstances) {
-            if ($path -match "\\SMB Client Shares\\(.+?)\\") {
+            if ($path -match "\\SMB Client Shares\((.+?)\)\\") {
                 $instanceName = $matches[1]
                 if ($instanceName -and $instanceName -ne "_Total") {
                     $instances += $instanceName
@@ -82,17 +82,18 @@ function Get-SMBClientCounters {
         
         if ($instances) {
             foreach ($instance in $instances) {
-                # 读取各种计数器
+                # Read the counters for the instance
                 $counterPaths = @(
-                    "\\SMB Client Shares($instance)\\Bytes Read/sec",
-                    "\\SMB Client Shares($instance)\\Bytes Written/sec",
-                    "\\SMB Client Shares($instance)\\Read Bytes/sec",
-                    "\\SMB Client Shares($instance)\\Write Bytes/sec",
-                    "\\SMB Client Shares($instance)\\Read Requests/sec",
-                    "\\SMB Client Shares($instance)\\Write Requests/sec",
-                    "\\SMB Client Shares($instance)\\Current Data Queue Length",
-                    "\\SMB Client Shares($instance)\\Data Bytes/sec",
-                    "\\SMB Client Shares($instance)\\Data Requests/sec"
+                    "\SMB Client Shares($instance)\Bytes Read/sec",
+                    "\SMB Client Shares($instance)\Bytes Written/sec",
+                    "\SMB Client Shares($instance)\Read Bytes/sec",
+                    "\SMB Client Shares($instance)\Write Bytes/sec",
+                    "\SMB Client Shares($instance)\Read Requests/sec",
+                    "\SMB Client Shares($instance)\Write Requests/sec",
+                    "\SMB Client Shares($instance)\Current Data Queue Length",
+                    "\SMB Client Shares($instance)\Data Bytes/sec",
+                    "\SMB Client Shares($instance)\Data Requests/sec",
+                    "\SMB Client Shares($instance)\Credit Stalls/sec"
                 )
                 
                 foreach ($counterPath in $counterPaths) {
@@ -109,7 +110,7 @@ function Get-SMBClientCounters {
                             
                             $metricName = "smb_client_$counterName"
                             
-                            # 添加 HELP 和 TYPE（仅第一次）
+                            # Add HELP and TYPE once per metric
                             if (-not $script:helpTypesPrinted.ContainsKey($metricName)) {
                                 $script:helpTypesPrinted[$metricName] = $true
                                 $metrics += "# HELP $metricName SMB Client $counterName for share`n"
@@ -124,20 +125,21 @@ function Get-SMBClientCounters {
                                 -Timestamp $timestamp
                         }
                     } catch {
-                        Write-Warning "无法读取计数器 $counterPath : $_"
+                        Write-Warning "Failed to read counter $counterPath : $_"
                     }
                 }
             }
         }
         
-        # SMB Client 全局计数器（无实例）
+        # Global SMB Client counters (no instance)
         $globalCounters = @(
             @{Path = "\SMB Client Shares\Bytes Read/sec"; Name = "bytes_read_per_sec_total"; Desc = "Total bytes read per second"},
             @{Path = "\SMB Client Shares\Bytes Written/sec"; Name = "bytes_written_per_sec_total"; Desc = "Total bytes written per second"},
             @{Path = "\SMB Client Shares\Read Bytes/sec"; Name = "read_bytes_per_sec_total"; Desc = "Total read bytes per second"},
             @{Path = "\SMB Client Shares\Write Bytes/sec"; Name = "write_bytes_per_sec_total"; Desc = "Total write bytes per second"},
             @{Path = "\SMB Client Shares\Read Requests/sec"; Name = "read_requests_per_sec_total"; Desc = "Total read requests per second"},
-            @{Path = "\SMB Client Shares\Write Requests/sec"; Name = "write_requests_per_sec_total"; Desc = "Total write requests per second"}
+            @{Path = "\SMB Client Shares\Write Requests/sec"; Name = "write_requests_per_sec_total"; Desc = "Total write requests per second"},
+            @{Path = "\SMB Client Shares\Credit Stalls/sec"; Name = "credit_stalls_per_sec_total"; Desc = "Total credit stalls per second"}
         )
         
         foreach ($counterInfo in $globalCounters) {
@@ -147,7 +149,7 @@ function Get-SMBClientCounters {
                     $value = $counter.CounterSamples[0].CookedValue
                     $metricName = "smb_client_$($counterInfo.Name)"
                     
-                    # 添加 HELP 和 TYPE（仅第一次）
+                    # Add HELP and TYPE once per metric
                     if (-not $script:helpTypesPrinted.ContainsKey($metricName)) {
                         $script:helpTypesPrinted[$metricName] = $true
                         $metrics += "# HELP $metricName $($counterInfo.Desc)`n"
@@ -161,41 +163,41 @@ function Get-SMBClientCounters {
                         -Timestamp $timestamp
                 }
             } catch {
-                Write-Warning "无法读取全局计数器 $($counterInfo.Path) : $_"
+                Write-Warning "Failed to read global counter $($counterInfo.Path) : $_"
             }
         }
         
     } catch {
-        Write-Error "获取 SMB Client 计数器时出错: $_"
+        Write-Error "Failed to query SMB Client counters: $_"
     }
     
     return $metrics
 }
 
-# 主函数：收集指标并写入文件
+# Collect metrics and write them to disk
 function Export-SMBClientMetrics {
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] 开始收集 SMB Client 指标..."
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Collecting SMB Client metrics..."
     
-    # 收集指标
+    # Gather metrics
     $metrics = Get-SMBClientCounters
     
-    # 如果没有收集到指标，写入空文件或添加注释
+    # If nothing was collected, emit a placeholder comment
     if ($metrics.Count -eq 0) {
         $metrics += "# No SMB Client metrics available`n"
-        Write-Warning "未收集到任何 SMB Client 指标"
+        Write-Warning "No SMB Client metrics were collected"
     }
     
-    # 写入临时文件
+    # Write to temp file first
     try {
         $metrics -join "" | Out-File -FilePath $tempFile -Encoding UTF8 -NoNewline -ErrorAction Stop
         
-        # 原子性移动文件（Windows 支持）
+        # Atomic move into place
         Move-Item -Path $tempFile -Destination $OutputPath -Force -ErrorAction Stop
         
-        Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] 指标已导出到: $OutputPath"
-        Write-Host "共收集 $($metrics.Count) 个指标行"
+        Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Metrics exported to: $OutputPath"
+        Write-Host "Total metric lines: $($metrics.Count)"
     } catch {
-        Write-Error "写入文件时出错: $_"
+        Write-Error "Failed to write metrics file: $_"
         if (Test-Path $tempFile) {
             Remove-Item $tempFile -Force
         }
@@ -203,6 +205,6 @@ function Export-SMBClientMetrics {
     }
 }
 
-# 执行导出
+# Entrypoint
 Export-SMBClientMetrics
 

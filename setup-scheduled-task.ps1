@@ -1,5 +1,5 @@
-# 设置计划任务以定期运行 SMB Client Exporter
-# 需要管理员权限运行
+# Configure a scheduled task to run the SMB Client exporter
+# Requires administrative privileges
 
 param(
     [string]$ScriptPath = "$PSScriptRoot\smb-client-exporter.ps1",
@@ -7,27 +7,27 @@ param(
     [int]$IntervalMinutes = 1
 )
 
-# 检查管理员权限
+# Verify administrative privileges
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Error "此脚本需要管理员权限运行"
+    Write-Error "Administrative privileges are required"
     exit 1
 }
 
-# 检查脚本文件是否存在
+# Make sure the exporter exists
 if (-not (Test-Path $ScriptPath)) {
-    Write-Error "找不到脚本文件: $ScriptPath"
+    Write-Error "Exporter script not found: $ScriptPath"
     exit 1
 }
 
-# 删除已存在的任务（如果存在）
+# Remove an existing task with the same name
 $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($existingTask) {
-    Write-Host "删除已存在的任务: $TaskName"
+    Write-Host "Removing existing task: $TaskName"
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
 
-# 创建计划任务
+# Create the new task definition
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-ExecutionPolicy Bypass -File `"$ScriptPath`""
 
@@ -37,14 +37,14 @@ $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" 
 
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 
-$task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "定期导出 SMB Client 性能计数器到 Prometheus textfile 格式"
+$task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "Export SMB Client counters to Prometheus textfile format"
 
-# 注册任务
+# Register the task
 Register-ScheduledTask -TaskName $TaskName -InputObject $task -Force
 
-Write-Host "计划任务已创建: $TaskName"
-Write-Host "任务将每 $IntervalMinutes 分钟运行一次"
-Write-Host "使用以下命令查看任务状态:"
+Write-Host "Scheduled task created: $TaskName"
+Write-Host "Frequency: every $IntervalMinutes minute(s)"
+Write-Host "Use the commands below to inspect the task:"
 Write-Host "  Get-ScheduledTask -TaskName `"$TaskName`""
 Write-Host "  Get-ScheduledTaskInfo -TaskName `"$TaskName`""
 
