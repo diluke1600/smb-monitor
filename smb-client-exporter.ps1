@@ -32,7 +32,11 @@ function Write-PrometheusMetric {
     $labelString = ""
     if ($Labels.Count -gt 0) {
         $labelPairs = $Labels.GetEnumerator() | ForEach-Object {
-            "$($_.Key)=`"$($_.Value)`""
+            # Prometheus exposition format requires backslash and quote escaping
+            $escapedValue = $_.Value
+            $escapedValue = $escapedValue -replace '\\', '\\\\'
+            $escapedValue = $escapedValue -replace '"', '\"'
+            "$($_.Key)=`"$escapedValue`""
         }
         $labelString = "{" + ($labelPairs -join ",") + "}"
     }
@@ -44,13 +48,32 @@ function Write-PrometheusMetric {
         $Value = 0
     }
     
-    if ($Timestamp -gt 0) {
-        $output += "$Name$labelString $Value $Timestamp`n"
-    } else {
-        $output += "$Name$labelString $Value`n"
-    }
+    # Textfile collectors (like windows_exporter) do not support client-side
+    # timestamps, so we always omit the timestamp column.
+    $output += "$Name$labelString $Value`n"
     
     return $output
+}
+
+# Sanitize share instance names for use as Prometheus label values
+function Convert-ShareNameToLabelValue {
+    param(
+        [string]$InstanceName
+    )
+
+    if (-not $InstanceName) {
+        return ""
+    }
+
+    $sanitized = $InstanceName
+    # Remove leading backslashes (e.g. "\server\share" -> "server\share")
+    $sanitized = $sanitized -replace '^[\\]+', ''
+    # Replace remaining backslashes with underscores
+    $sanitized = $sanitized -replace '\\', '_'
+    # Replace whitespace with underscores
+    $sanitized = $sanitized -replace '\s+', '_'
+
+    return $sanitized
 }
 
 # Collect SMB client counters
@@ -105,7 +128,7 @@ function Get-SMBClientCounters {
                             $value = $counter.CounterSamples[0].CookedValue
                             
                             $labels = @{
-                                share = $instance
+                                share = (Convert-ShareNameToLabelValue -InstanceName $instance)
                             }
                             
                             $metricName = "smb_client_$counterName"
